@@ -208,6 +208,7 @@ class BackendBridge:
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._loop.run_forever, daemon=True)
         self._started = threading.Event()
+        self._stopping = threading.Event()
 
     def start(self):
         self._thread.start()
@@ -216,8 +217,9 @@ class BackendBridge:
         self._started.set()
 
     def stop(self):
-        if not self._started.is_set():
+        if not self._started.is_set() or self._stopping.is_set():
             return
+        self._stopping.set()
         fut = asyncio.run_coroutine_threadsafe(self._client.stop(), self._loop)
         try:
             fut.result(timeout=5)

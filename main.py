@@ -31,7 +31,8 @@ def main():
     win.mainloop()
 
     # 5. Cleanup on exit
-    controller.stop_session()
+    if controller.is_session_active():
+        controller.stop_session()
 
 
 if __name__ == "__main__":

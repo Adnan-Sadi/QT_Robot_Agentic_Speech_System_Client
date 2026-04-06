@@ -30,6 +30,9 @@ class ChatController:
     # Session lifecycle
     # ------------------------------------------------------------------
 
+    def is_session_active(self) -> bool:
+        return self._session_active
+
     def start_session(self):
         """Called when user clicks Start Chat."""
         if self._session_active:
