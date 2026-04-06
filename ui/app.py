@@ -57,7 +57,7 @@ class MainWindow(ctk.CTk):
         self._transcript_preview.grid(row=0, column=0, sticky="ew", padx=12, pady=8)
 
         self._send_btn = ctk.CTkButton(
-            input_frame, text="📤  Send", width=120,
+            input_frame, text="Send", width=120,
             font=("", 14, "bold"),
             command=self._on_send, state="disabled"
         )

@@ -13,10 +13,10 @@ class TranscriptPanel(ctk.CTkFrame):
         self._textbox.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
 
     def append_user(self, text):
-        self._append(f"🧑 You:  {text}\n\n")
+        self._append(f"You:  {text}\n\n")
 
     def append_assistant(self, text):
-        self._append(f"🤖 QT:  {text}\n\n")
+        self._append(f"QT:  {text}\n\n")
 
     def append_system(self, text):
         self._append(f"   ── {text} ──\n\n")
