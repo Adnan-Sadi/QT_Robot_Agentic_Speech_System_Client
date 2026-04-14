@@ -51,10 +51,55 @@ class STTAccumulator:
     # ------------------------------------------------------------------
 
     def setup_ros_audio(self):
-        """Subscribe to the robot's audio topic."""
-        self._audio_sub = rospy.Subscriber(
-            '/qt_respeaker_app/channel0', AudioData, self._on_audio
+        """Subscribe to the robot's audio topic or open an external mic via PyAudio."""
+        if settings.MIC_SOURCE == "external":
+            self._setup_external_mic()
+        else:
+            # Default: subscribe to the ReSpeaker ROS topic
+            self._audio_sub = rospy.Subscriber(
+                '/qt_respeaker_app/channel0', AudioData, self._on_audio
+            )
+
+    def _setup_external_mic(self):
+        """Open a PyAudio stream for the external USB microphone."""
+        import pyaudio
+
+        self._pyaudio = pyaudio.PyAudio()
+
+        device_index = None
+        if settings.MIC_DEVICE_INDEX is not None:
+            device_index = int(settings.MIC_DEVICE_INDEX)
+
+        # Log the device being used
+        if device_index is not None:
+            dev_info = self._pyaudio.get_device_info_by_index(device_index)
+            rospy.loginfo(f"External mic: using device {device_index} — {dev_info['name']}")
+        else:
+            dev_info = self._pyaudio.get_default_input_device_info()
+            rospy.loginfo(f"External mic: using system default — {dev_info['name']}")
+
+        CHUNK = 1024  # frames per buffer
+
+        self._pa_stream = self._pyaudio.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=self._audio_rate,
+            input=True,
+            input_device_index=device_index,
+            frames_per_buffer=CHUNK,
+            stream_callback=self._pa_callback,
         )
+        self._pa_stream.start_stream()
+
+    def _pa_callback(self, in_data, frame_count, time_info, status):
+        """PyAudio callback — mirrors _on_audio but for external mic."""
+        import pyaudio
+        if self._listening:
+            try:
+                self._aqueue.put_nowait(in_data)
+            except queue.Full:
+                pass
+        return (None, pyaudio.paContinue)
 
     def _on_audio(self, msg):
         """ROS audio callback — only queue data when listening."""
@@ -88,6 +133,12 @@ class STTAccumulator:
         """Stop STT recognition (e.g., while robot is speaking)."""
         self._listening = False
         self._running = False
+        # Cleanup PyAudio stream if using external mic
+        if hasattr(self, '_pa_stream') and self._pa_stream is not None:
+            self._pa_stream.stop_stream()
+            self._pa_stream.close()
+        if hasattr(self, '_pyaudio') and self._pyaudio is not None:
+            self._pyaudio.terminate()
         # Put None to unblock the MicrophoneStream generator
         self._aqueue.put(None)
 

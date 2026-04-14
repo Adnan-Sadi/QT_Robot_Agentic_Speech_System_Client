@@ -180,7 +180,30 @@ Before starting this application, confirm that:
 - the microphone topic is publishing audio
 - the backend is reachable from the robot
 
+
+### 6. Find External Microphone Device Index (if using external mic)
 ---
+Find if the device is available:
+
+```bash
+arecord -l
+```
+
+Find the device index for PyAudio configuration:
+
+```bash
+python3 << 'EOF'
+import pyaudio
+p = pyaudio.PyAudio()
+for i in range(p.get_device_count()):
+    info = p.get_device_info_by_index(i)
+    if info['maxInputChannels'] > 0:
+        print(f"Index {i}: {info['name']} (inputs: {info['maxInputChannels']}, rate: {int(info['defaultSampleRate'])})")
+p.terminate()
+EOF
+```
+
+set the `MIC_DEVICE_INDEX` variable in the `.env` file.
 
 ## Running the Application
 

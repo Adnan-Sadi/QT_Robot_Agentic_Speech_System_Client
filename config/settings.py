@@ -19,6 +19,10 @@ class Settings:
     DEFAULT_LANGUAGE = os.getenv("DEFAULT_LANGUAGE", "en-US")
     SPEECH_MODEL = os.getenv("SPEECH_MODEL", "default")
     USE_ENHANCED_MODEL = os.getenv("USE_ENHANCED_MODEL", "True").lower() == "true"
+
+    # Microphone source: "default" (ReSpeaker ROS topic) or "external" (USB mic)
+    MIC_SOURCE = os.getenv("MIC_SOURCE", "default").lower()
+    MIC_DEVICE_INDEX = os.getenv("MIC_DEVICE_INDEX", None)
     
     # Speech Speed
     SPEECH_SPEED = int(os.getenv("SPEECH_SPEED", "90"))
