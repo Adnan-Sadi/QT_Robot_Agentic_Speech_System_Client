@@ -14,7 +14,6 @@ class BackendClient:
     - Auth: POST {BASE}/api/token/ -> {'access','refresh'}
     - WS :  wss://{HOST}/ws/chat/?token=<access>&source=<client>
     - Send: {"type":"transcription","data":"..."}
-    - Receive: 'llm_response', 'emotion', etc.
     """
 
     def __init__(self, base_http: str = None, ws_path: str = None, source: str = None):
@@ -89,9 +88,12 @@ class BackendClient:
     async def _connect_ws(self):
         assert self._http and self.ws_url
         headers = {"Origin": self.base_http}
-        # aiohttp uses its own ping/pong mechanism to keep the connection alive
-        # if the server does not respond within 20 seconds, the connection is closed
         self._ws = await self._http.ws_connect(self.ws_url, headers=headers, heartbeat=20)
+        # Backend requires a start_session message before any chat messages
+        await self._ws.send_str(json.dumps({
+            "type": "start_session",
+            "source": self.source,
+        }))
 
     # ---------------------------
     # Listen & dispatch
@@ -107,22 +109,16 @@ class BackendClient:
                     continue
             
                 mtype = data.get("type")
-                if mtype == "llm_response":
+                if mtype == "chat_message":
                     async with self._lock:
-                        payload = data.get("data")
-                        emotion = data.get("emotion")
+                        payload = data.get("text")
                         
-                        # Handle both string (ChatConsumer) and dict (ActivityChatConsumer)
-                        if isinstance(payload, str):
-                            text = payload
-                            current_scenario = None
-                            next_scenario = None
-                        elif isinstance(payload, dict):
+                        try:
                             text = payload.get("text", "")
                             current_scenario = payload.get("current_scenario")
                             next_scenario = payload.get("next_scenario")
-                        else:
-                            # Skip if payload is neither string nor dict
+                        except AttributeError:
+                            # Skip if payload is not a dict
                             continue
                         
                         if self._pending_future and not self._pending_future.done():
@@ -154,7 +150,7 @@ class BackendClient:
         emotion: Optional[str] = None,
         timeout: float = None
     ) -> Tuple[str, Optional[str], Optional[str], Optional[str]]:
-        """Send a transcription (with optional emotion) and wait for the next llm_response.
+        """Send a transcription (with optional emotion) and wait for the next chat_message.`
         
         Args:
             text: The transcription text
@@ -176,7 +172,7 @@ class BackendClient:
             self._pending_future = asyncio.get_running_loop().create_future()
         
         # Build payload with optional emotion
-        payload: Dict[str, Any] = {"type": "transcription", "data": text}
+        payload: Dict[str, Any] = {"type": "chat_message", "text": text}
         if emotion is not None:
             payload["emotion"] = emotion
             print(f"Sending transcription with emotion: {emotion}")
