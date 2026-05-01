@@ -58,7 +58,8 @@ class BackendClient:
 
     async def _login(self):
         assert self._http
-        url = f"{self.base_http}/api/token/"
+        #url = f"{self.base_http}/api/token/"
+        url = f"{self.base_http}/api/auth/login/"
         # Expect USERNAME/PASSWORD in environment
         username = settings.USERNAME
         password = settings.PASSWORD
